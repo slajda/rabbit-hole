@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Internet Rabbit Hole</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#05060a;
+    --void-2:#0a0c14;
+    --ink:#c9d1d9;
+    --ink-dim:#6b7280;
+    --line:#1c2030;
+    --philosophy:#a78bfa;
+    --psychology:#fb7185;
+    --science:#22d3ee;
+    --history:#fbbf24;
+    --internet:#4ade80;
+    --paradox:#e879f9;
+    --stranger:#94a3b8;
+    --corruption:0;           /* 0 = lucid, 1 = gone */
+    --sidebar-w:320px;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background:var(--void);
+    color:var(--ink);
+    font-family:"Space Mono", ui-monospace, monospace;
+    overflow:hidden;
+    overscroll-behavior:none;
+    position:relative;
+    -webkit-text-size-adjust:100%;
+  }
+
+  /* ---------- Ambient void ---------- */
+  #stars{ position:fixed; inset:0; z-index:0; display:block; }
+  #nebula{
+    position:fixed; inset:-20%; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(40% 35% at 28% 30%, rgba(124,77,255,.10), transparent 70%),
+      radial-gradient(45% 40% at 75% 68%, rgba(34,211,238,.08), transparent 70%),
+      radial-gradient(40% 40% at 60% 18%, rgba(232,121,249,.06), transparent 70%);
+    filter:blur(8px);
+    animation:drift 38s ease-in-out infinite alternate;
+  }
+  @keyframes drift{ from{ transform:translate3d(-2%,-1%,0) scale(1.02);} to{ transform:translate3d(2%,2%,0) scale(1.08);} }
+
+  /* ---------- Graph stage ---------- */
+  #graph{
+    position:fixed; inset:0; z-index:1;
+    touch-action:none; cursor:grab;
+  }
+  #graph.grabbing{ cursor:grabbing; }
+  #world{ position:absolute; left:0; top:0; transform-origin:0 0; will-change:transform; }
+  #links{ position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }
+  #links path{ fill:none; stroke-linecap:round; }
+
+  /* ---------- Nodes ---------- */
+  .node{
+    position:absolute;
+    transform:translate(-50%,-50%) scale(.2);
+    opacity:0;
+    width:216px;
+    padding:12px 16px;
+    border-radius:14px;
+    background:linear-gradient(180deg, rgba(12,14,22,.88), rgba(7,8,13,.94));
+    border:1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    color:#eef1f6;
+    font-family:"Fraunces", Georgia, serif;
+    font-weight:500;
+    font-size:14.5px;
+    line-height:1.34;
+    text-align:left;
+    cursor:pointer;
+    user-select:none;
+    backdrop-filter:blur(3px);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.02) inset,
+      0 0 14px color-mix(in srgb, var(--accent) 30%, transparent),
+      0 0 40px color-mix(in srgb, var(--accent) 14%, transparent);
+    transition:transform .55s cubic-bezier(.16,1,.3,1), opacity .55s ease,
+               box-shadow .35s ease, border-color .35s ease;
+  }
+  .node.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  .node:hover{ border-color:color-mix(in srgb, var(--accent) 90%, white 10%); }
+  .node .cat{
+    display:block; font-family:"Space Mono",monospace; font-weight:700;
+    font-size:8.5px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--accent); opacity:.85; margin-bottom:6px;
+  }
+  .node.seed{ width:312px; font-size:19px; line-height:1.3; padding:20px 26px; border-radius:20px; text-align:center; }
+  .node.seed .cat{ font-size:9.5px; }
+  .node.active{
+    border-color:#fff;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.06) inset,
+      0 0 22px color-mix(in srgb, var(--accent) 55%, transparent),
+      0 0 70px color-mix(in srgb, var(--accent) 26%, transparent);
+  }
+  .node.active::after{
+    content:""; position:absolute; inset:-7px; border-radius:20px;
+    border:1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    animation:ring 2.6s ease-out infinite; pointer-events:none;
+  }
+  @keyframes ring{ 0%{ transform:scale(.96); opacity:.7;} 100%{ transform:scale(1.18); opacity:0;} }
+  .node.expanded{ opacity:.92; }
+  .node.fav-on{ }
+  .node .star{
+    position:absolute; top:-9px; right:-9px; width:22px; height:22px;
+    display:grid; place-items:center; border-radius:50%;
+    background:rgba(8,9,14,.9); border:1px solid var(--line);
+    font-family:"Space Mono",monospace; font-size:12px; line-height:1;
+    color:var(--ink-dim); opacity:0; transition:opacity .2s, color .2s, transform .2s;
+  }
+  .node:hover .star, .node.fav-on .star{ opacity:1; }
+  .node.fav-on .star{ color:var(--history); border-color:color-mix(in srgb,var(--history) 60%, transparent); }
+  .node .star:hover{ transform:scale(1.15); }
+
+  .glitch{ animation:glitch .22s steps(2) 1; }
+  @keyframes glitch{ 50%{ transform:translate(-50%,-50%) translate(1px,-1px) scale(1.005); filter:hue-rotate(40deg);} }
+
+  /* ---------- HUD ---------- */
+  .hud{ position:fixed; z-index:5; pointer-events:none; }
+  .hud *{ pointer-events:auto; }
+
+  #hud-tl{ top:18px; left:20px; }
+  .brand{ font-weight:700; letter-spacing:.18em; font-size:11px; color:var(--ink); }
+  .brand b{ color:#fff; }
+  .brand .dot{ color:var(--paradox); }
+  .sub{ margin-top:4px; font-size:9.5px; letter-spacing:.16em; color:var(--ink-dim); text-transform:uppercase; }
+  .depth-wrap{ margin-top:16px; display:flex; align-items:baseline; gap:10px; }
+  .depth-num{ font-family:"Fraunces",serif; font-weight:600; font-size:40px; line-height:.9; color:#fff;
+    text-shadow:0 0 18px color-mix(in srgb, var(--paradox) 40%, transparent); }
+  .depth-meta{ font-size:9px; letter-spacing:.14em; color:var(--ink-dim); text-transform:uppercase; line-height:1.5; }
+  .depth-meta span{ color:var(--ink); }
+
+  /* Sanity */
+  #hud-tr{ top:18px; right:20px; text-align:right; width:200px; }
+  .sanity-label{ font-size:9px; letter-spacing:.2em; color:var(--ink-dim); text-transform:uppercase; }
+  .sanity-status{ font-family:"Fraunces",serif; font-style:italic; font-size:18px; margin-top:3px;
+    color:#fff; transition:color .6s ease; }
+  .sanity-bar{ margin-top:8px; height:6px; border-radius:6px; background:#13151f; overflow:hidden;
+    border:1px solid var(--line); }
+  .sanity-fill{ height:100%; width:100%; border-radius:6px;
+    background:linear-gradient(90deg, #22d3ee, #a78bfa);
+    transition:width .7s cubic-bezier(.16,1,.3,1), background .7s ease; }
+  .sanity-whisper{ margin-top:7px; font-size:9.5px; color:var(--ink-dim); font-style:italic;
+    min-height:13px; opacity:.9; transition:opacity .4s; }
+
+  /* ---------- Bottom controls ---------- */
+  #controls{
+    position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:20;
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;
+    max-width:92vw;
+  }
+  .btn{
+    font-family:"Space Mono",monospace; font-size:11px; letter-spacing:.06em;
+    color:var(--ink); background:rgba(10,12,20,.82); border:1px solid var(--line);
+    padding:11px 16px; border-radius:11px; cursor:pointer; backdrop-filter:blur(6px);
+    transition:border-color .2s, color .2s, background .2s, transform .1s; white-space:nowrap;
+    touch-action:manipulation; position:relative; z-index:1;
+  }
+  .btn:hover{ border-color:#39405a; color:#fff; }
+  .btn:active{ transform:translateY(1px); }
+  .btn.primary{
+    color:#05060a; font-weight:700; border-color:transparent;
+    background:linear-gradient(90deg, var(--paradox), #c084fc);
+    box-shadow:0 0 24px color-mix(in srgb, var(--paradox) 35%, transparent);
+  }
+  .btn.primary:hover{ filter:brightness(1.08); color:#05060a; }
+  .btn:focus-visible{ outline:2px solid var(--science); outline-offset:2px; }
+  .lbl-short{ display:none; }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar{
+    position:fixed; top:0; right:0; z-index:7; height:100%;
+    width:var(--sidebar-w); max-width:86vw;
+    background:linear-gradient(180deg, rgba(8,9,14,.94), rgba(6,7,11,.96));
+    border-left:1px solid var(--line); backdrop-filter:blur(10px);
+    display:flex; flex-direction:column;
+    transform:translateX(0); transition:transform .4s cubic-bezier(.16,1,.3,1);
+  }
+  #sidebar.closed{ transform:translateX(100%); }
+  .side-head{ padding:18px 18px 10px; border-bottom:1px solid var(--line); }
+  .side-head h2{ margin:0; font-family:"Fraunces",serif; font-weight:600; font-size:16px; color:#fff; letter-spacing:.01em; }
+  .tabs{ display:flex; gap:6px; margin-top:14px; }
+  .tab{ flex:1; font-family:"Space Mono",monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-dim); background:transparent; border:1px solid var(--line); border-radius:8px;
+    padding:8px 6px; cursor:pointer; transition:.2s; touch-action:manipulation; }
+  .tab.on{ color:#fff; border-color:#39405a; background:rgba(255,255,255,.03); }
+  .side-body{ flex:1; overflow-y:auto; padding:10px 12px 90px; }
+  .side-body::-webkit-scrollbar{ width:8px; }
+  .side-body::-webkit-scrollbar-thumb{ background:#1c2030; border-radius:8px; }
+
+  .trail-item, .fav-item{
+    display:block; width:100%; text-align:left; cursor:pointer;
+    background:rgba(255,255,255,.012); border:1px solid var(--line); border-left:2px solid var(--accent,#39405a);
+    border-radius:9px; padding:10px 11px; margin:7px 0;
+    color:var(--ink); transition:.2s; position:relative;
+  }
+  .trail-item:hover, .fav-item:hover{ border-color:#39405a; background:rgba(255,255,255,.04); }
+  .ti-meta{ font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent,#6b7280); margin-bottom:4px; display:flex; justify-content:space-between; }
+  .ti-text{ font-family:"Fraunces",serif; font-size:13px; line-height:1.3; color:#e7eaf0; }
+  .empty{ color:var(--ink-dim); font-size:11px; text-align:center; padding:34px 14px; font-style:italic; line-height:1.6; }
+  .fav-del{ position:absolute; top:8px; right:9px; color:var(--ink-dim); font-size:12px; border:none; background:none; cursor:pointer; opacity:0; transition:.2s; }
+  .fav-item:hover .fav-del{ opacity:1; }
+  .fav-del:hover{ color:var(--psychology); }
+
+  #side-toggle{
+    position:fixed; top:18px; right:calc(var(--sidebar-w) + 14px); z-index:8;
+    width:40px; height:40px; border-radius:10px; cursor:pointer;
+    background:rgba(10,12,20,.82); border:1px solid var(--line); color:var(--ink);
+    display:grid; place-items:center; font-size:15px; backdrop-filter:blur(6px); touch-action:manipulation;
+    transition:right .4s cubic-bezier(.16,1,.3,1), border-color .2s, color .2s;
+  }
+  #side-toggle:hover{ border-color:#39405a; color:#fff; }
+  #sidebar.closed ~ #side-toggle{ right:14px; }
+
+  /* ---------- Zoom controls ---------- */
+  #zoomctl{
+    position:fixed; right:calc(var(--sidebar-w) + 14px); top:50%; transform:translateY(-50%);
+    z-index:19; display:flex; flex-direction:column; gap:8px;
+    transition:right .4s cubic-bezier(.16,1,.3,1);
+  }
+  #sidebar.closed ~ #zoomctl{ right:14px; }
+  .zbtn{
+    width:42px; height:42px; border-radius:11px; cursor:pointer; touch-action:manipulation;
+    background:rgba(10,12,20,.84); border:1px solid var(--line); color:var(--ink);
+    display:grid; place-items:center; font-family:"Space Mono",monospace; font-size:21px; line-height:1;
+    backdrop-filter:blur(6px); transition:border-color .2s, color .2s, background .2s, transform .08s; user-select:none;
+  }
+  .zbtn:hover{ border-color:#39405a; color:#fff; }
+  .zbtn:active{ transform:scale(.93); }
+  #zoomFit{ font-size:16px; }
+
+  /* ---------- Insight / perspectives panel ---------- */
+  .insight{
+    position:fixed; left:20px; top:120px; bottom:auto; max-height:calc(100vh - 150px); z-index:18;
+    width:352px; max-width:calc(100vw - 40px);
+    display:flex; flex-direction:column;
+    background:linear-gradient(180deg, rgba(10,12,20,.93), rgba(6,7,11,.97));
+    border:1px solid var(--line); border-left:2px solid var(--accent,#39405a);
+    border-radius:16px; backdrop-filter:blur(12px);
+    box-shadow:0 24px 70px rgba(0,0,0,.55), 0 0 30px color-mix(in srgb, var(--accent) 12%, transparent);
+    transform:translateX(-16px); opacity:0; pointer-events:none;
+    transition:transform .45s cubic-bezier(.16,1,.3,1), opacity .35s ease;
+  }
+  .insight.open{ transform:none; opacity:1; pointer-events:auto; }
+  .ins-close{ position:absolute; top:10px; right:10px; z-index:2; width:26px; height:26px;
+    display:grid; place-items:center; border-radius:8px; background:rgba(255,255,255,.04);
+    border:1px solid var(--line); color:var(--ink-dim); cursor:pointer; font-size:11px; touch-action:manipulation; }
+  .ins-close:hover{ color:#fff; border-color:#39405a; }
+  .ins-scroll{ padding:18px 18px 10px; overflow-y:auto; flex:1 1 auto; min-height:0; }
+  .ins-scroll::-webkit-scrollbar{ width:8px; }
+  .ins-scroll::-webkit-scrollbar-thumb{ background:#1c2030; border-radius:8px; }
+  .ins-eyebrow{ font-family:"Space Mono",monospace; font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:var(--accent,#6b7280); }
+  .ins-q{ margin:9px 0 10px; font-family:"Fraunces",serif; font-weight:600; font-size:18px; line-height:1.28; color:#fff; padding-right:24px; }
+  .ins-frame{ margin:0 0 14px; font-size:12px; line-height:1.55; color:#aab2bf; font-style:italic; }
+  .ins-lenses{ display:flex; flex-direction:column; gap:9px; }
+  .lens{ border:1px solid var(--line); border-left:2px solid var(--accent,#39405a); border-radius:10px;
+    padding:10px 12px; background:rgba(255,255,255,.015);
+    opacity:0; transform:translateY(6px); animation:lensIn .5s cubic-bezier(.16,1,.3,1) forwards; }
+  .lens:nth-child(2){ animation-delay:.07s; } .lens:nth-child(3){ animation-delay:.14s; }
+  @keyframes lensIn{ to{ opacity:1; transform:none; } }
+  .lens-label{ font-family:"Space Mono",monospace; font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent,#9aa3b2); margin-bottom:5px; }
+  .lens-text{ font-size:12.5px; line-height:1.5; color:#d7dce4; font-family:"Space Mono",monospace; }
+  .ins-foot{ display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:11px 14px; border-top:1px solid var(--line); }
+  .ins-save{ font-family:"Space Mono",monospace; font-size:10.5px; letter-spacing:.04em; color:var(--ink);
+    background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:9px; padding:8px 12px; cursor:pointer; touch-action:manipulation; }
+  .ins-save:hover{ color:#fff; border-color:#39405a; }
+  .ins-foot-hint{ font-family:"Space Mono",monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); }
+  @media (max-width:720px){
+    .insight{ left:10px; right:10px; top:auto;
+      bottom:calc(72px + env(safe-area-inset-bottom));
+      width:auto; max-width:none; max-height:46vh;
+      border-radius:16px; border:1px solid var(--line); border-left:2px solid var(--accent,#39405a);
+      transform:translateY(14px); }
+    .insight.open{ transform:none; }
+    .ins-scroll{ padding:16px 16px 8px; }
+    .ins-q{ font-size:16px; }
+    .ins-frame{ font-size:11.5px; }
+    .lens-text{ font-size:11.5px; line-height:1.45; overflow-wrap:anywhere; }
+    .ins-foot{ padding:10px 12px; }
+  }
+
+  /* corruption overlay */
+  #vignette{ position:fixed; inset:0; z-index:4; pointer-events:none;
+    box-shadow:inset 0 0 calc(120px + var(--corruption)*340px) calc(20px + var(--corruption)*120px)
+      rgba(2,2,4, calc(.45 + var(--corruption)*.4));
+    background:radial-gradient(circle at 50% 54%, transparent 52%, rgba(120,0,30, calc(var(--corruption)*.12)) 100%);
+    transition:box-shadow 1s ease, background 1s ease;
+  }
+  #scanline{ position:fixed; inset:0; z-index:4; pointer-events:none; opacity:calc(var(--corruption)*.5);
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px);
+    mix-blend-mode:overlay; transition:opacity 1s ease; }
+  #hud-scrim{ position:fixed; inset:0; z-index:3; pointer-events:none;
+    background:
+      radial-gradient(280px 200px at 0% 0%, rgba(5,6,10,.82), transparent 72%),
+      radial-gradient(300px 220px at 100% 0%, rgba(5,6,10,.78), transparent 72%),
+      linear-gradient(0deg, rgba(5,6,10,.72), transparent 16%); }
+
+  .hint{ position:fixed; left:50%; bottom:70px; transform:translateX(-50%); z-index:6;
+    font-size:10px; letter-spacing:.12em; color:var(--ink-dim); text-transform:uppercase;
+    pointer-events:none; opacity:0; transition:opacity .6s ease; }
+  .hint.show{ opacity:.7; }
+
+  @media (max-width:720px){
+    :root{ --sidebar-w:300px; }
+    #hud-tl{ top:calc(12px + env(safe-area-inset-top)); left:14px; }
+    .brand{ font-size:10px; letter-spacing:.14em; }
+    .sub{ font-size:8.5px; }
+    .depth-wrap{ margin-top:12px; gap:8px; }
+    .depth-num{ font-size:30px; }
+    .depth-meta{ font-size:8px; }
+    /* sanity sits to the LEFT of the menu toggle; whisper hidden to save room */
+    #hud-tr{ width:118px; top:calc(12px + env(safe-area-inset-top)); right:60px; }
+    .sanity-label{ font-size:8px; }
+    .sanity-status{ font-size:14px; }
+    .sanity-whisper{ display:none; }
+    #side-toggle{ top:calc(12px + env(safe-area-inset-top)); width:38px; height:38px; font-size:14px; }
+    #sidebar.closed ~ #side-toggle{ right:14px; }
+    .node.seed{ width:min(82vw,320px); font-size:17px; padding:16px 20px; }
+    .node{ width:188px; font-size:13.5px; padding:10px 13px; }
+    #controls{ bottom:calc(14px + env(safe-area-inset-bottom)); gap:8px; flex-wrap:nowrap; max-width:96vw; }
+    .btn{ font-size:11px; padding:11px 12px; }
+    .lbl-full{ display:none; } .lbl-short{ display:inline; }
+    .hint{ bottom:calc(66px + env(safe-area-inset-bottom)); font-size:9px; max-width:90vw; text-align:center; line-height:1.5; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{ animation-duration:.001s !important; }
+    .node{ transition:opacity .2s ease; transform:translate(-50%,-50%) scale(1); }
+    #nebula{ animation:none; }
+  }
+</style>
+</head>
+<body>
+  <canvas id="stars"></canvas>
+  <div id="nebula"></div>
+
+  <div id="graph">
+    <div id="world">
+      <svg id="links"></svg>
+    </div>
+  </div>
+
+  <div id="vignette"></div>
+  <div id="scanline"></div>
+  <div id="hud-scrim"></div>
+
+  <!-- HUD -->
+  <div class="hud" id="hud-tl">
+    <div class="brand"><b>INTERNET</b> RABBIT HOLE<span class="dot">.</span></div>
+    <div class="sub">descend through connected thought</div>
+    <div class="depth-wrap">
+      <div class="depth-num" id="depthNum">0</div>
+      <div class="depth-meta">DEPTH<br>deepest reached <span id="maxDepth">0</span></div>
+    </div>
+  </div>
+
+  <div class="hud" id="hud-tr">
+    <div class="sanity-label">Sanity</div>
+    <div class="sanity-status" id="sanityStatus">Lucid</div>
+    <div class="sanity-bar"><div class="sanity-fill" id="sanityFill"></div></div>
+    <div class="sanity-whisper" id="sanityWhisper"></div>
+  </div>
+
+  <!-- Controls -->
+  <div id="controls">
+    <button class="btn" id="saveBtn" title="Save the node you're focused on">★ Save this hole</button>
+    <button class="btn primary" id="strangerBtn"><span class="lbl-full">⤳ Take me somewhere stranger</span><span class="lbl-short">⤳ Stranger</span></button>
+    <button class="btn" id="resetBtn" title="Start a new rabbit hole">⟳ Reset</button>
+  </div>
+
+  <div class="hint" id="hint">tap a node to fall deeper · use + / − to zoom · drag to wander</div>
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="side-head">
+      <h2 id="sideTitle">Journey</h2>
+      <div class="tabs">
+        <button class="tab on" data-tab="trail">History</button>
+        <button class="tab" data-tab="fav">Saved</button>
+      </div>
+    </div>
+    <div class="side-body" id="sideBody"></div>
+  </aside>
+  <button id="side-toggle" title="Toggle journey panel">▸</button>
+
+  <!-- Zoom controls -->
+  <div id="zoomctl">
+    <button class="zbtn" id="zoomIn" title="Zoom in" aria-label="Zoom in">+</button>
+    <button class="zbtn" id="zoomFit" title="Fit / recentre" aria-label="Fit view">⤢</button>
+    <button class="zbtn" id="zoomOut" title="Zoom out" aria-label="Zoom out">−</button>
+  </div>
+
+  <!-- Insight / perspectives -->
+  <aside id="insight" class="insight" aria-live="polite">
+    <button class="ins-close" id="insClose" title="Close perspectives">✕</button>
+    <div class="ins-scroll">
+      <div class="ins-eyebrow"><span id="insCat"></span> · perspectives</div>
+      <h3 class="ins-q" id="insQ"></h3>
+      <p class="ins-frame" id="insFrame"></p>
+      <div class="ins-lenses" id="insLenses"></div>
+    </div>
+    <div class="ins-foot">
+      <button class="ins-save" id="insSave">★ Save</button>
+      <span class="ins-foot-hint">tap a node to go deeper</span>
+    </div>
+  </aside>
+
+<script>
+"use strict";
+(function(){
+  /* ========================================================= DATA */
+  const CATS = ["philosophy","psychology","science","history","internet","paradox"];
+  const NEIGHBORS = {
+    philosophy:["psychology","paradox","science"],
+    psychology:["philosophy","internet","science"],
+    science:["philosophy","paradox","history"],
+    history:["internet","science","philosophy"],
+    internet:["psychology","history","paradox"],
+    paradox:["philosophy","science","internet"]
+  };
+
+  const SEEDS = [
+    ["What if reality is only perception?","philosophy"],
+    ["Does the universe know that you exist?","science"],
+    ["Are you the same person who started reading this sentence?","philosophy"],
+    ["Who is the 'you' that watches your thoughts?","psychology"],
+    ["Why does anything exist instead of nothing?","philosophy"],
+    ["What lives in the parts of the internet no one indexes?","internet"],
+    ["If you replaced every part of yourself, would you still be you?","paradox"],
+    ["What was your last thought before you were born?","philosophy"],
+    ["How many people have been completely forgotten by everyone?","history"],
+    ["Is the present moment already the past?","science"]
+  ];
+
+  const POOLS = {
+    philosophy:[
+      "Is free will an illusion you were designed to believe?",
+      "If a memory is false, did the moment still happen?",
+      "Can you ever truly experience another mind?",
+      "What if consciousness is something the universe does, not something you have?",
+      "Where does 'you' end and the world begin?",
+      "Would you notice if you were replaced by an identical copy?",
+      "Is the self just a story you keep retelling?",
+      "Can something be true if no one will ever know it?",
+      "What if death is the end of a perspective, not of you?",
+      "Is meaning discovered, or invented?",
+      "If everything is determined, is choosing still real?",
+      "What if you are the universe briefly looking at itself?",
+      "Could you tell reality from a perfect simulation of it?",
+      "Is 'now' the same instant for everyone?"
+    ],
+    psychology:[
+      "Why do you trust a memory you can't verify?",
+      "What decisions has your brain already made without telling you?",
+      "Why does the mind invent reasons for feelings it doesn't understand?",
+      "Are your preferences yours, or were they installed?",
+      "Why do you become someone else inside your dreams?",
+      "What is the voice in your head, and who is it talking to?",
+      "Why does the brain rewrite a memory every time you recall it?",
+      "How much of 'you' is just habit running on autopilot?",
+      "Why do crowds make individuals disappear?",
+      "What were you about to think before you forgot it?",
+      "Why does the mind fear silence?",
+      "Why do you see faces in things that have none?"
+    ],
+    science:[
+      "Where does information go when the universe forgets it?",
+      "Why does time only move in one direction?",
+      "What existed in the instant before the first instant?",
+      "Are you mostly empty space pretending to be solid?",
+      "Could two identical particles secretly be one particle?",
+      "Is the moon there when no one is looking at it?",
+      "How does a single cell know it is part of you?",
+      "What if the laws of physics are local habits, not rules?",
+      "Does the universe compute — and what is it solving?",
+      "Why is the speed of light a limit and not a suggestion?",
+      "If you could see every wavelength, would the world still look real?",
+      "What waits at the edge of the observable universe?"
+    ],
+    history:[
+      "What did the last speaker of a dead language think at the end?",
+      "Who was the first person to wonder if they were dreaming?",
+      "What knowledge did we lose and never know we had?",
+      "How many inventions were discovered, lost, and rediscovered?",
+      "Who decided which version of history you were taught?",
+      "What ordinary object outlived everyone who knew its meaning?",
+      "How many secrets died with the people who kept them?",
+      "What did ancient people see in the sky that we no longer notice?",
+      "Which present-day truth will the future find absurd?",
+      "What was buried with a civilization no one survived to explain?",
+      "Whose name was the last to be spoken aloud, ever?"
+    ],
+    internet:[
+      "Who is on the other end of a message no one admits to sending?",
+      "What happens to a website after its last visitor leaves?",
+      "Why do some images feel like they were never meant to be seen?",
+      "Where do deleted things actually go?",
+      "Who watches the cameras that watch the empty rooms?",
+      "What is the oldest file still quietly running somewhere?",
+      "Why did a search return a page that shouldn't exist?",
+      "Who maintains the systems no one remembers building?",
+      "Is there a version of you, made from your data, you've never met?",
+      "What message is still looping on a server everyone forgot?",
+      "What is hidden one click past where anyone bothers to look?"
+    ],
+    paradox:[
+      "If this sentence is false, what is it?",
+      "Can an all-powerful force create a limit it cannot break?",
+      "If you change the past, who changed it?",
+      "Can you step in the same river — or the same self — twice?",
+      "Is a heap still a heap after you remove one grain, then the next?",
+      "Can you ever finish crossing a distance made of infinite halves?",
+      "If everyone is lying, is the one who says so telling the truth?",
+      "Does the set of all things that don't contain themselves contain itself?",
+      "If the future already exists, are you remembering it or living it?",
+      "Can a map that contains itself ever be complete?",
+      "What happens when an unstoppable thought meets an immovable belief?"
+    ]
+  };
+
+  const STRANGER = [
+    ["Somewhere, a phone is ringing in a house that no longer exists.","stranger"],
+    ["Every mirror has shown a face no one was there to see.","stranger"],
+    ["There is a number you will never think of. This is not it.","paradox"],
+    ["A door you walked past today was never opened again.","stranger"],
+    ["The last photo of someone is taken before anyone knows it's the last.","history"],
+    ["Your future self already knows how this sentence ends.","paradox"],
+    ["There is a sound too common to ever be noticed.","psychology"],
+    ["A room you've never entered is waiting exactly as you'd expect.","stranger"],
+    ["The word you're looking for is avoiding you on purpose.","psychology"],
+    ["Some questions were written only to keep you reading.","internet"],
+    ["A light is still on in a building that was demolished.","stranger"],
+    ["You have already forgotten something that mattered.","psychology"]
+  ];
+
+  const FRAGS = [
+    "the silence between thoughts","the feeling of being watched","the version of you that gave up",
+    "the dream you almost remember","the data you left behind","the question you keep avoiding",
+    "the room behind the mirror","the thought that thinks itself","the part of the map left blank",
+    "the signal no one sent","the memory that edits itself","the moment before you knew",
+    "the name no one says anymore","the door you never opened","the face in the static"
+  ];
+  const T_MILD = [
+    "What lies beneath {x}?",
+    "Who benefits from you believing in {x}?",
+    "What if {x} is watching back?",
+    "Where does {x} go when you stop noticing it?",
+    "Is {x} hiding something simpler — or something worse?",
+    "What did you trade for {x}?"
+  ];
+  const T_DEEP = [
+    "Why are you still going deeper?",
+    "Who told you to keep clicking?",
+    "What were you really looking for down here?",
+    "You shouldn't have followed {x} this far.",
+    "There is nothing left but {x}.",
+    "It noticed you noticing {x}.",
+    "Go back. ( You won't. )"
+  ];
+
+  const STATUSES = [
+    [86,"Lucid","#9ee6ff",""],
+    [66,"Curious","#a78bfa","the questions are getting comfortable."],
+    [46,"Unsettled","#c084fc","you can't tell who is asking anymore."],
+    [28,"Unmoored","#e879f9","the floor was a metaphor."],
+    [12,"Dissolving","#fb7185","the questions are answering each other."],
+    [1,"Vanishing","#f43f5e","whose curiosity is this?"],
+    [-1,"——","#7f1d2b","( still here? )"]
+  ];
+
+  /* perspectives shown for the focused node — real theories, matched by keyword */
+  const FRAMES = {
+    philosophy:"A question about mind, reality, and the self. People have circled it for millennia without landing.",
+    psychology:"This is about the machinery beneath your own awareness — most of which runs without asking you.",
+    science:"Physics has real, strange things to say here — and a few open questions it still can't close.",
+    history:"A question about what gets remembered, what's quietly lost, and who decides.",
+    internet:"The network keeps things, forgets things, and watches things in ways few people look at directly.",
+    paradox:"A loop that bites its own tail. The interest isn't the answer — it's why it refuses to resolve.",
+    stranger:"No clean category. Just a thought that won't sit still."
+  };
+  const LENSES = [
+    // — philosophy / mind / reality / self / free will —
+    {label:"Idealism", tags:["perception","perceive","reality","real ","exist","mind"], cats:["philosophy"], text:"Berkeley argued there's no matter hiding behind perception — to exist is to be perceived. The world may be built from experience, not stuff."},
+    {label:"Simulation hypothesis", tags:["simulation","simulated","reality","real ","universe","computer"], cats:["philosophy","science"], text:"If civilisations ever run ancestor-simulations, simulated minds would vastly outnumber real ones — so, statistically, you might be one. Unfalsifiable, but hard to shake."},
+    {label:"The hard problem", tags:["consciousness","experience","aware","feel","mind","perception"], cats:["philosophy","psychology"], text:"You can map every neuron and still not explain why it feels like anything from the inside. Chalmers named this the 'hard problem' of consciousness."},
+    {label:"Panpsychism", tags:["consciousness","universe","matter","aware"], cats:["philosophy","science"], text:"Perhaps consciousness isn't produced by brains but is a basic property of matter — present in some faint form everywhere, like charge or mass."},
+    {label:"No-self (anattā)", tags:["self","you","identity","ego","same person","watches"], cats:["philosophy","psychology"], text:"Buddhist thought holds there is no fixed self — only a stream of changing processes you mistake for a permanent 'I'."},
+    {label:"The block universe", tags:["time","now","present","past","future","moment"], cats:["philosophy","science"], text:"In relativity, past, present and future may exist equally; 'now' is just where you stand. Nothing flows — you move through a frozen landscape."},
+    {label:"Determinism & Libet", tags:["free will","choose","decision","determined","choice","control"], cats:["philosophy","psychology"], text:"Brain activity predicting a 'choice' shows up before you feel you've decided. Some read this as free will being a story told after the fact."},
+    {label:"Compatibilism", tags:["free will","determined","choice","choose"], cats:["philosophy"], text:"Even in a determined universe, 'free' can mean acting from your own desires without coercion. Freedom and causation may not be enemies at all."},
+    {label:"Solipsism", tags:["another mind","other mind","alone","only","experience another"], cats:["philosophy"], text:"You can only ever access your own experience. The unsettling extreme: nothing outside your mind is provably real."},
+    {label:"Absurdism", tags:["meaning","point","purpose","why does anything","instead of nothing"], cats:["philosophy"], text:"Camus: the universe offers no built-in meaning, yet we crave it. The reply isn't despair but to live fully inside that gap."},
+    {label:"Ship of Theseus", tags:["replace","same","parts","you still","copy"], cats:["philosophy","paradox"], text:"Swap every plank of a ship and is it the same ship? Swap every atom and memory of you, and the question turns inward."},
+    // — psychology —
+    {label:"Confabulation", tags:["reason","invent","feeling","explain","why do you","decision"], cats:["psychology"], text:"Split-brain studies show the mind inventing confident reasons for actions it never consciously caused — and fully believing them."},
+    {label:"Memory reconsolidation", tags:["memory","remember","recall","forgot","false","verify"], cats:["psychology"], text:"Each time you recall a memory you rewrite it slightly, then re-store the edited copy. Your most vivid memories may be the most altered."},
+    {label:"Predictive processing", tags:["perception","see","brain","sense","face","real"], cats:["psychology","science"], text:"Your brain doesn't passively receive the world — it predicts it and only corrects on error. You partly see what you expect to see."},
+    {label:"The default mode network", tags:["voice","head","thought","autopilot","habit","narrator","silence"], cats:["psychology"], text:"A specific brain network runs the wandering inner narrator — the 'you' that talks to itself. Quiet it and the sense of self can dissolve."},
+    {label:"Pareidolia", tags:["face","pattern","recognize","never there","see"], cats:["psychology"], text:"The brain is tuned to find faces and agents everywhere — a survival bias that makes us read minds, and meaning, into pure noise."},
+    {label:"The adaptive unconscious", tags:["without telling","already","unconscious","autopilot","installed","preferences"], cats:["psychology"], text:"Most choices are made below awareness and handed up pre-decided. 'You' often just ratifies what was already chosen."},
+    {label:"Deindividuation", tags:["crowd","crowds","group","individual","disappear"], cats:["psychology"], text:"In crowds, self-awareness drops and people act in ways they never would alone. The individual genuinely fades into the group."},
+    {label:"Depersonalisation", tags:["watch","observe","dream","someone else","detached"], cats:["psychology"], text:"Under stress the mind can step back and watch itself like a stranger — a hint that the observer and the self aren't the same thing."},
+    // — science —
+    {label:"The observer effect", tags:["look","observe","watching","moon","measure","there when","wavelength"], cats:["science"], text:"In quantum mechanics, unobserved systems exist as overlapping possibilities until measured. What 'measurement' actually is remains argued over."},
+    {label:"Many-worlds", tags:["possibility","particle","reality","choice","universe"], cats:["science","philosophy"], text:"One reading of quantum theory: every possible outcome happens, each in its own branching world. Nothing collapses — reality just splits."},
+    {label:"The arrow of time", tags:["time","direction","one direction","entropy","forward"], cats:["science"], text:"The laws of physics run the same forwards and backwards, yet time flows only one way — toward disorder. Why is one of its deepest open puzzles."},
+    {label:"The holographic principle", tags:["information","forget","data","space","universe"], cats:["science"], text:"Some physics suggests all the information in a region can be encoded on its boundary — hinting reality is more like a projection than solid stuff."},
+    {label:"Indistinguishable particles", tags:["particle","identical","same particle","two"], cats:["science"], text:"Two electrons aren't merely alike — they're fundamentally interchangeable, with no hidden identity. One idea: every electron is literally the same one."},
+    {label:"Mostly empty space", tags:["solid","empty","atom","space pretending","matter"], cats:["science"], text:"Atoms are ~99.9999% empty; 'solidity' is electromagnetic repulsion, not stuff touching stuff. You never actually touch anything."},
+    {label:"Before the Big Bang", tags:["before","first instant","beginning","origin","start"], cats:["science"], text:"Asking what came 'before' the Big Bang may be like asking what's north of the North Pole — time itself may begin there, making the question malformed."},
+    {label:"Heat death", tags:["end","forget","entropy","information","universe"], cats:["science"], text:"Left running, the universe trends toward uniform cold sameness where nothing can happen. Structure and information are temporary against that tide."},
+    // — history —
+    {label:"Survivorship of the record", tags:["forgotten","remember","lost","record","name","completely"], cats:["history"], text:"What survives is a tiny, biased fraction — the durable, the powerful, the lucky. Most lives left no trace and are gone completely."},
+    {label:"Lost technologies", tags:["knowledge","lost","invention","rediscover","ancient","technique"], cats:["history"], text:"Roman concrete, Greek fire, the Antikythera mechanism — knowledge has been lost for centuries then rebuilt from scratch. Progress isn't a straight line."},
+    {label:"Language death", tags:["language","speaker","dead language","tongue","word","last"], cats:["history"], text:"A language dies roughly every few weeks; with it goes a whole way of carving up the world that no translation fully recovers."},
+    {label:"History by the victors", tags:["decided","taught","version","history","story","truth"], cats:["history"], text:"The record is curated — what's remembered was chosen by those with power to write it down. Absence is rarely neutral."},
+    {label:"Deep time", tags:["ancient","civilization","outlived","everyone","sky","time"], cats:["history"], text:"Set human history against geological time and even great empires are a thin bright flicker. Almost everything that mattered to someone is already forgotten."},
+    // — internet —
+    {label:"Link rot", tags:["website","page","deleted","disappear","last visitor","leaves","gone"], cats:["internet"], text:"The average web page survives only a few years before vanishing. Much of the internet you remember is already dead links and ghosts."},
+    {label:"Dead internet theory", tags:["bot","message","sent","loop","content","real","looping"], cats:["internet"], text:"A fringe claim: much of today's traffic and content is automated, and you're increasingly talking to machines wearing human masks. Overstated — but not nothing."},
+    {label:"Your data shadow", tags:["data","version of you","profile","yourself","never met","watching"], cats:["internet","psychology"], text:"Ad and data systems assemble a model of you from your behaviour — one that can predict you better than friends do, and that you'll never meet."},
+    {label:"Legacy systems", tags:["oldest","running","system","build","maintain","forgot","file"], cats:["internet","history"], text:"Critical banking, airline and government systems still run on 1960s code almost nobody can read. The modern world quietly leans on software no one remembers writing."},
+    {label:"The unindexed web", tags:["hidden","index","search","deep","shouldn't exist","invisible"], cats:["internet"], text:"Search engines map only a sliver of what's online. Vastly more sits unlinked and effectively invisible unless you already know it's there."},
+    {label:"Recorded, unwatched", tags:["camera","watch","empty","room","watching"], cats:["internet"], text:"Far more is recorded than is ever watched — feeds pile up in storage, seen by no one, kept just in case. Attention, not capture, is the scarce thing."},
+    // — paradox —
+    {label:"The liar paradox", tags:["false","sentence","lying","lie","true","truth"], cats:["paradox"], text:"'This sentence is false' can't be true or false without contradiction. Loops like this helped end the dream of a complete, consistent logic."},
+    {label:"The omnipotence paradox", tags:["all-powerful","powerful","limit","cannot","force","break"], cats:["paradox"], text:"Can an all-powerful being make a thing it can't undo? Either way it meets a limit — suggesting 'omnipotence' may be incoherent as usually stated."},
+    {label:"Bootstrap paradox", tags:["past","change the past","future","already","go back"], cats:["paradox"], text:"Send information to the past that causes itself, and it has no origin — it just is. Cause and effect swallow their own tail."},
+    {label:"The Sorites paradox", tags:["heap","grain","remove","still","next"], cats:["paradox"], text:"Take grains from a heap one by one and it's never not-a-heap at any single step — yet eventually it's gone. Vague ideas have no clean edge."},
+    {label:"Zeno's dichotomy", tags:["distance","halves","infinite","cross","finish"], cats:["paradox"], text:"To go anywhere you must first go halfway, then half of what's left, forever. Motion looks impossible — until infinite steps are shown to sum to a finite whole."},
+    {label:"Russell's paradox", tags:["set","contain","itself","map"], cats:["paradox"], text:"Does the set of all sets that don't contain themselves contain itself? Either answer contradicts — a crack that shook the foundations of mathematics."},
+    {label:"Newcomb's problem", tags:["future","predict","already knows","living it","remembering"], cats:["paradox"], text:"If a perfect predictor already knows your choice, are you choosing or fulfilling? It splits careful thinkers into two camps that can't agree."}
+  ];
+
+  /* ========================================================= STATE */
+  const used = new Set();
+  let nodes = {}, idc = 0, activeId = null;
+  let maxDepth = 0;
+  let saved = loadSaved();
+
+  // view transform
+  let scale = 1, tx = 0, ty = 0;
+
+  const rnd = a => a[Math.floor(Math.random()*a.length)];
+  const pick = (arr,n) => { const c=[...arr]; const out=[]; while(c.length&&out.length<n) out.push(c.splice(Math.floor(Math.random()*c.length),1)[0]); return out; };
+
+  function freshFromPool(cat){
+    const p = POOLS[cat]; if(!p) return null;
+    const open = p.filter(t=>!used.has(t));
+    return open.length ? rnd(open) : null;
+  }
+  function templated(cat, depth){
+    const x = rnd(FRAGS);
+    const t = (depth>=5 && Math.random()<0.5) ? rnd(T_DEEP) : rnd(T_MILD);
+    return t.replace("{x}", x);
+  }
+  function makeChildText(parentCat, depth){
+    // choose source category
+    let cat = parentCat;
+    const r = Math.random();
+    if(r < 0.30) cat = rnd(NEIGHBORS[parentCat]||CATS);
+    else if(r < 0.36) cat = rnd(CATS);
+    let text = freshFromPool(cat);
+    if(!text){ text = templated(cat, depth); }
+    return { text, cat };
+  }
+
+  /* ========================================================= DOM */
+  const graph = document.getElementById("graph");
+  const world = document.getElementById("world");
+  const svg   = document.getElementById("links");
+  const depthNum = document.getElementById("depthNum");
+  const maxDepthEl = document.getElementById("maxDepth");
+  const sanityStatus = document.getElementById("sanityStatus");
+  const sanityFill = document.getElementById("sanityFill");
+  const sanityWhisper = document.getElementById("sanityWhisper");
+  const sideBody = document.getElementById("sideBody");
+  const sideTitle = document.getElementById("sideTitle");
+  const sidebar = document.getElementById("sidebar");
+  const insight = document.getElementById("insight");
+  const insCat = document.getElementById("insCat");
+  const insQ = document.getElementById("insQ");
+  const insFrame = document.getElementById("insFrame");
+  const insLenses = document.getElementById("insLenses");
+  const controlsEl = document.getElementById("controls");
+
+  function applyTransform(){
+    if(!isFinite(scale) || scale<=0) scale=1;
+    if(!isFinite(tx)) tx=0;
+    if(!isFinite(ty)) ty=0;
+    world.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  }
+
+  function sidebarOffset(){
+    const open = !sidebar.classList.contains("closed");
+    return (open && window.innerWidth>720) ? parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sidebar-w")) : 0;
+  }
+  function insightOpen(){ return insight.classList.contains("open"); }
+  /* the mobile insight card sits above the controls via CSS, so just clear any stale offset */
+  function layoutSheet(){ controlsEl.style.bottom = ""; }
+  function anchor(){
+    const onMobile = window.innerWidth<=720;
+    const leftPad = (!onMobile && insightOpen()) ? 372 : 0;     // clear the left reading panel
+    const right = sidebarOffset();
+    const yF = (onMobile && insightOpen()) ? 0.30 : 0.47;        // clear the bottom sheet
+    return { x: leftPad + (window.innerWidth - leftPad - right)/2, y: window.innerHeight*yF };
+  }
+
+  /* tween the world transform — animates zoom AND pan together */
+  let tween=null;
+  function tweenTo(ts, tX, tY, dur=640){
+    if(!isFinite(scale)||scale<=0) scale=1; if(!isFinite(tx)) tx=0; if(!isFinite(ty)) ty=0;
+    if(!isFinite(ts)||ts<=0) ts=scale; if(!isFinite(tX)) tX=tx; if(!isFinite(tY)) tY=ty;
+    dur=Math.max(1, dur||0);
+    const ss=scale, sx=tx, sy=ty, t0=performance.now();
+    if(tween) cancelAnimationFrame(tween);
+    const ease = t => 1-Math.pow(1-t,3);
+    (function step(now){
+      const k = Math.min(1,(now-t0)/dur), e=ease(k);
+      scale = ss+(ts-ss)*e; tx = sx+(tX-sx)*e; ty = sy+(tY-sy)*e; applyTransform();
+      if(k<1) tween=requestAnimationFrame(step);
+    })(performance.now());
+  }
+  /* keep current zoom, just pan a world-point to the anchor */
+  function centerOn(wx, wy, dur=620){
+    const a = anchor();
+    tweenTo(scale, a.x - wx*scale, a.y - wy*scale, dur);
+  }
+  /* the visible rectangle in screen px, clear of HUD / panels / controls */
+  function viewportRect(){
+    const mobile = window.innerWidth<=720;
+    const pad = mobile?26:40;
+    const vx0 = (!mobile && insightOpen()) ? 392 : pad;       // clear the left perspectives panel
+    const vx1 = window.innerWidth - sidebarOffset() - Math.max(pad, 62);  // clear sidebar + zoom buttons
+    const vy0 = mobile ? 96 : 114;                             // clear the top HUD
+    const vy1 = window.innerHeight - (mobile && insightOpen()
+                  ? Math.round(window.innerHeight*0.46)+92     // clear the bottom insight card + controls
+                  : 104);                                      // clear the bottom controls
+    return { vx0, vy0, vx1:Math.max(vx0+140,vx1), vy1:Math.max(vy0+140,vy1) };
+  }
+  /* zoom + pan so all of `ids` fit inside the visible rectangle */
+  function frameNodes(ids, dur=680){
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity,any=false;
+    for(const id of ids){
+      const n=nodes[id]; if(!n) continue; any=true;
+      const w=(n.el && n.el.offsetWidth)||216, h=(n.el && n.el.offsetHeight)||120;
+      x0=Math.min(x0,n.x-w/2); x1=Math.max(x1,n.x+w/2);
+      y0=Math.min(y0,n.y-h/2); y1=Math.max(y1,n.y+h/2);
+    }
+    if(!any) return;
+    const bw=Math.max(1,x1-x0), bh=Math.max(1,y1-y0);
+    const cx=(x0+x1)/2, cy=(y0+y1)/2;
+    const r=viewportRect();
+    const VW=r.vx1-r.vx0, VH=r.vy1-r.vy0;
+    let s = Math.min(VW/bw, VH/bh);
+    s = Math.max(0.32, Math.min(1.05, s));                     // never vanish, never over-zoom
+    const scx=(r.vx0+r.vx1)/2, scy=(r.vy0+r.vy1)/2;
+    tweenTo(s, scx - cx*s, scy - cy*s, dur);
+  }
+  /* frame a node together with its children (and parent for context) */
+  function focusView(node, dur=700){
+    const ids=[node.id];
+    if(node.children && node.children.length) ids.push(...node.children);
+    if(node.parent && nodes[node.parent]) ids.push(node.parent);
+    if(ids.length>1) frameNodes(ids, dur);
+    else centerOn(node.x, node.y, dur);
+  }
+
+  /* ========================================================= NODES */
+  function createNode({text,cat,depth,x,y,parent,seed}){
+    const id = "n"+(idc++);
+    const el = document.createElement("div");
+    el.className = "node" + (seed?" seed":"");
+    el.style.setProperty("--accent", `var(--${cat})`);
+    el.style.left = x+"px"; el.style.top = y+"px";
+    el.innerHTML = `<span class="cat">${cat}</span>${text}<button class="star" title="Save / unsave">★</button>`;
+    world.appendChild(el);
+
+    const node = {id,text,cat,depth,x,y,parent,el,children:[],expanded:false,seed:!!seed};
+    nodes[id]=node;
+    used.add(text);
+
+    // interactions: distinguish tap from drag (touch-friendly)
+    let downX=0,downY=0,moved=false;
+    el.addEventListener("pointerdown",e=>{
+      if(e.target.classList.contains("star")) return;
+      e.stopPropagation();                       // keep the background pan from firing
+      downX=e.clientX; downY=e.clientY; moved=false;
+      try{ el.setPointerCapture(e.pointerId); }catch(_){}
+    });
+    el.addEventListener("pointermove",e=>{
+      if(Math.hypot(e.clientX-downX, e.clientY-downY) > 14) moved=true;
+    });
+    el.addEventListener("pointerup",e=>{
+      if(e.target.classList.contains("star")) return;
+      try{ el.releasePointerCapture(e.pointerId); }catch(_){}
+      if(!moved) onNodeClick(node);              // no time limit — a slow tap still counts
+    });
+    el.querySelector(".star").addEventListener("click",e=>{ e.stopPropagation(); toggleFav(node); });
+
+    // spawn animation
+    requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add("show")));
+    return node;
+  }
+
+  function drawEdge(parent, child){
+    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+    const dx=child.x-parent.x, dy=child.y-parent.y;
+    const mx=(parent.x+child.x)/2, my=(parent.y+child.y)/2;
+    // perpendicular bow for organic curve
+    const len=Math.hypot(dx,dy)||1, nx=-dy/len, ny=dx/len, bow=Math.min(60,len*0.18)*(Math.random()<.5?1:-1);
+    const cx=mx+nx*bow, cy=my+ny*bow;
+    path.setAttribute("d",`M ${parent.x} ${parent.y} Q ${cx} ${cy} ${child.x} ${child.y}`);
+    path.setAttribute("stroke",`var(--${child.cat})`);
+    path.setAttribute("stroke-width","1.4");
+    path.style.opacity="0.55";
+    path.style.filter=`drop-shadow(0 0 5px color-mix(in srgb, var(--${child.cat}) 60%, transparent))`;
+    svg.appendChild(path);
+    // draw-in
+    try{
+      const L=path.getTotalLength();
+      path.style.strokeDasharray=L; path.style.strokeDashoffset=L;
+      path.style.transition="stroke-dashoffset .7s ease";
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ path.style.strokeDashoffset="0"; }));
+    }catch(_){}
+    return path;
+  }
+
+  /* place children radially, away from grandparent, with light collision avoidance */
+  function layoutChildren(parent, count){
+    let base;
+    if(parent.parent && nodes[parent.parent]){
+      const g=nodes[parent.parent];
+      base=Math.atan2(parent.y-g.y, parent.x-g.x);
+    } else { base = Math.PI/2; } // root: fan downward
+    const spread = Math.min(Math.PI*1.0, 0.6+count*0.34);
+    const R = (parent.seed?380:320) + count*14;
+    const pts=[];
+    for(let i=0;i<count;i++){
+      const t = count===1?0.5:i/(count-1);
+      let ang = base - spread/2 + spread*t + (Math.random()-0.5)*0.16;
+      let r = R + (Math.random()-0.5)*50;
+      let x = parent.x + Math.cos(ang)*r;
+      let y = parent.y + Math.sin(ang)*r;
+      // avoid overlapping existing nodes (cards are ~216px wide now)
+      for(let k=0;k<7;k++){
+        let clash=false;
+        for(const id in nodes){
+          const o=nodes[id];
+          if(Math.hypot(o.x-x,o.y-y)<205){ clash=true; break; }
+        }
+        if(!clash) break;
+        r+=95; ang+=0.15;
+        x=parent.x+Math.cos(ang)*r; y=parent.y+Math.sin(ang)*r;
+      }
+      pts.push({x,y});
+    }
+    return pts;
+  }
+
+  function expand(node){
+    if(node.expanded) return;
+    node.expanded=true; node.el.classList.add("expanded");
+    const count = 3 + Math.floor(Math.random()* (window.innerWidth<=720 ? 1 : 2)); // 3 on phones, 3-4 on desktop
+    const pts = layoutChildren(node, count);
+    for(let i=0;i<count;i++){
+      const {text,cat}=makeChildText(node.cat, node.depth+1);
+      const child=createNode({text,cat,depth:node.depth+1,x:pts[i].x,y:pts[i].y,parent:node.id});
+      node.children.push(child.id);
+      drawEdge(node,child);
+    }
+  }
+
+  function setActive(node){
+    if(activeId && nodes[activeId]) nodes[activeId].el.classList.remove("active");
+    activeId=node.id; node.el.classList.add("active");
+    depthNum.textContent=node.depth;
+    if(node.depth>maxDepth){ maxDepth=node.depth; maxDepthEl.textContent=maxDepth; updateSanity(); }
+    updateFavButtons();
+    fillInsight(node);
+    if(window.innerWidth>720) openInsight(); else hideInsight();
+  }
+
+  function onNodeClick(node){
+    if(activeId===node.id){ toggleInsight(); return; }   // re-tap the focused node to peek/dismiss
+    setActive(node);
+    if(!node.expanded){ expand(node); pushTrail(node); }
+    focusView(node);
+    maybeGlitch();
+  }
+
+  /* ========================================================= INSIGHT */
+  function getPerspectives(node){
+    const q = (" "+node.text+" ").toLowerCase();
+    const scored = LENSES
+      .map(l => ({ l, s: l.tags.reduce((n,t)=> n + (q.includes(t)?1:0), 0) }))
+      .filter(o => o.s>0)
+      .sort((a,b)=> b.s-a.s);
+    const out=[], seen=new Set();
+    for(const o of scored){ if(!seen.has(o.l.label)){ out.push(o.l); seen.add(o.l.label); } if(out.length>=3) break; }
+    if(out.length<3){
+      let pool = LENSES.filter(l => l.cats.includes(node.cat));
+      if(!pool.length) pool = LENSES.filter(l => l.cats.includes("philosophy") || l.cats.includes("paradox"));
+      for(const l of pool.sort(()=>Math.random()-0.5)){
+        if(out.length>=3) break;
+        if(!seen.has(l.label)){ out.push(l); seen.add(l.label); }
+      }
+    }
+    return { frame: FRAMES[node.cat] || FRAMES.stranger, lenses: out.slice(0, Math.max(2, Math.min(3, out.length))) };
+  }
+  function fillInsight(node){
+    const { frame, lenses } = getPerspectives(node);
+    insight.style.setProperty("--accent", `var(--${node.cat})`);
+    insCat.textContent = node.cat;
+    insQ.textContent = node.text;
+    insFrame.textContent = frame;
+    insLenses.innerHTML = lenses.map(l =>
+      `<div class="lens"><div class="lens-label">${escapeHtml(l.label)}</div><div class="lens-text">${escapeHtml(l.text)}</div></div>`
+    ).join("");
+    updateFavButtons();
+  }
+  function openInsight(){ insight.classList.add("open"); requestAnimationFrame(layoutSheet); }
+  function showInsight(node){ fillInsight(node); openInsight(); }
+  function hideInsight(){ insight.classList.remove("open"); layoutSheet(); }
+  function toggleInsight(){
+    if(insightOpen()){ hideInsight(); }
+    else if(activeId && nodes[activeId]){ showInsight(nodes[activeId]); }
+  }
+
+  /* ========================================================= SANITY */
+  function sanityValue(){ return Math.max(0, Math.round(100*Math.pow(0.9, maxDepth))); }
+  function updateSanity(){
+    const s=sanityValue();
+    let row=STATUSES[STATUSES.length-1];
+    for(const r of STATUSES){ if(s>=r[0]){ row=r; break; } }
+    sanityStatus.textContent=row[1];
+    sanityStatus.style.color=row[2];
+    sanityWhisper.textContent=row[3];
+    sanityFill.style.width=Math.max(2,s)+"%";
+    // fill colour shifts toward alarm as it drops
+    const hueA = 190 + (1-s/100)*0, // keep gradient ends; just recolor
+          c1 = s>50?"#22d3ee":(s>25?"#a78bfa":"#fb7185"),
+          c2 = s>50?"#a78bfa":(s>25?"#fb7185":"#f43f5e");
+    sanityFill.style.background=`linear-gradient(90deg, ${c1}, ${c2})`;
+    document.documentElement.style.setProperty("--corruption", (1-s/100).toFixed(3));
+  }
+  function maybeGlitch(){
+    const c=1-sanityValue()/100;
+    if(c>0.35 && Math.random()<c*0.6){
+      const ids=Object.keys(nodes); if(!ids.length) return;
+      const n=nodes[rnd(ids)];
+      n.el.classList.add("glitch");
+      setTimeout(()=>n.el.classList.remove("glitch"),240);
+    }
+  }
+
+  /* ========================================================= TRAIL + FAV */
+  let trail=[];
+  function pushTrail(node){
+    trail.push({id:node.id,text:node.text,cat:node.cat,depth:node.depth});
+    if(currentTab==="trail") renderSide();
+  }
+  function isFav(text){ return saved.some(s=>s.text===text); }
+  function toggleFav(node){
+    const i=saved.findIndex(s=>s.text===node.text);
+    if(i>=0) saved.splice(i,1);
+    else saved.unshift({text:node.text,cat:node.cat,depth:node.depth});
+    persistSaved(); updateFavButtons();
+    if(currentTab==="fav") renderSide();
+  }
+  function updateFavButtons(){
+    for(const id in nodes){
+      nodes[id].el.classList.toggle("fav-on", isFav(nodes[id].text));
+    }
+    const a=activeId&&nodes[activeId];
+    const mobile = window.innerWidth<=720;
+    document.getElementById("saveBtn").textContent = (a&&isFav(a.text)) ? "★ Saved" : (mobile ? "★ Save" : "★ Save this hole");
+    const insSave=document.getElementById("insSave");
+    if(insSave) insSave.textContent = (a&&isFav(a.text))?"★ Saved":"★ Save";
+  }
+
+  let currentTab="trail";
+  function renderSide(){
+    sideTitle.textContent = currentTab==="trail"?"Journey":"Saved";
+    if(currentTab==="trail"){
+      if(!trail.length){ sideBody.innerHTML=`<div class="empty">Your path will appear here as you fall.<br>Nothing recorded yet.</div>`; return; }
+      sideBody.innerHTML="";
+      trail.slice().reverse().forEach(t=>{
+        const b=document.createElement("button");
+        b.className="trail-item"; b.style.setProperty("--accent",`var(--${t.cat})`);
+        b.innerHTML=`<div class="ti-meta"><span>${t.cat}</span><span>↓ ${t.depth}</span></div><div class="ti-text">${escapeHtml(t.text)}</div>`;
+        b.addEventListener("click",()=>{ const n=nodes[t.id]; if(n){ setActive(n); focusView(n);} });
+        sideBody.appendChild(b);
+      });
+    } else {
+      if(!saved.length){ sideBody.innerHTML=`<div class="empty">No saved rabbit holes.<br>Hit ★ on a node, or use “Save this hole”.</div>`; return; }
+      sideBody.innerHTML="";
+      saved.forEach((s,idx)=>{
+        const b=document.createElement("div");
+        b.className="fav-item"; b.style.setProperty("--accent",`var(--${s.cat})`);
+        b.innerHTML=`<div class="ti-meta"><span>${s.cat}</span><span>↓ ${s.depth}</span></div><div class="ti-text">${escapeHtml(s.text)}</div><button class="fav-del" title="Remove">✕</button>`;
+        b.addEventListener("click",e=>{
+          if(e.target.classList.contains("fav-del")) return;
+          // recenter if the node exists in current graph
+          const match=Object.values(nodes).find(n=>n.text===s.text);
+          if(match){ setActive(match); focusView(match); }
+        });
+        b.querySelector(".fav-del").addEventListener("click",e=>{ e.stopPropagation(); saved.splice(idx,1); persistSaved(); updateFavButtons(); renderSide(); });
+        sideBody.appendChild(b);
+      });
+    }
+  }
+  function escapeHtml(s){ return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+  function loadSaved(){ try{ return JSON.parse(localStorage.getItem("irh_saved")||"[]"); }catch(_){ return []; } }
+  function persistSaved(){ try{ localStorage.setItem("irh_saved", JSON.stringify(saved)); }catch(_){} }
+
+  /* ========================================================= STRANGER / RESET */
+  let islandCount=0;
+  function takeStranger(){
+    const cur = activeId&&nodes[activeId];
+    const baseDepth = cur?cur.depth+1:1;
+    // place far away in a random direction to form a new island
+    const ang = Math.random()*Math.PI*2;
+    const dist = 900 + islandCount*240;
+    islandCount++;
+    let x = (cur?cur.x:0) + Math.cos(ang)*dist;
+    let y = (cur?cur.y:0) + Math.sin(ang)*dist;
+    const [text,cat]=rnd(STRANGER);
+    let t=text;
+    if(used.has(t)){ t = t + (Math.random()<.5?" ":"") ; } // allow repeat fallback rarely
+    const node=createNode({text:t,cat,depth:baseDepth,x,y,parent:null});
+    setActive(node); pushTrail(node); centerOn(x,y,760);
+    // a faint pulse: expand immediately so the island has branches, then fit them
+    setTimeout(()=>{ expand(node); focusView(node); },360);
+    maybeGlitch();
+  }
+
+  function reset(){
+    // wipe
+    hideInsight();
+    Object.values(nodes).forEach(n=>n.el.remove());
+    svg.innerHTML="";
+    nodes={}; idc=0; activeId=null; maxDepth=0; trail=[]; used.clear(); islandCount=0;
+    scale=1; tx=0; ty=0; applyTransform();
+    maxDepthEl.textContent="0"; depthNum.textContent="0";
+    updateSanity(); renderSide();
+    boot();
+  }
+
+  /* ========================================================= PAN / ZOOM */
+  const pointers=new Map(); let panning=false, panSX=0,panSY=0,startTX=0,startTY=0, pinchDist=0, pinchMid=null;
+  graph.addEventListener("pointerdown",e=>{
+    if(e.target.closest(".node")) return; // node handles its own
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pointers.size===1){ panning=true; graph.classList.add("grabbing"); panSX=e.clientX; panSY=e.clientY; startTX=tx; startTY=ty; }
+    else if(pointers.size===2){ panning=false; const p=[...pointers.values()]; pinchDist=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); pinchMid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2}; }
+  });
+  window.addEventListener("pointermove",e=>{
+    if(pointers.has(e.pointerId)) pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pointers.size===2){
+      const p=[...pointers.values()];
+      const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+      const mid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};
+      if(pinchDist>0) zoomAt(mid.x,mid.y, d/pinchDist);
+      pinchDist=d; pinchMid=mid; return;
+    }
+    if(panning){ tx=startTX+(e.clientX-panSX); ty=startTY+(e.clientY-panSY); applyTransform(); }
+  });
+  function endPointer(e){
+    pointers.delete(e.pointerId);
+    if(pointers.size<2) pinchDist=0;
+    if(pointers.size===0){ panning=false; graph.classList.remove("grabbing"); }
+  }
+  window.addEventListener("pointerup",endPointer);
+  window.addEventListener("pointercancel",endPointer);
+
+  graph.addEventListener("wheel",e=>{ e.preventDefault(); const f=Math.pow(1.0015, -e.deltaY); zoomAt(e.clientX,e.clientY,f); },{passive:false});
+  function zoomAt(cx,cy,factor){
+    const ns=Math.min(2.2,Math.max(0.22, scale*factor));
+    const k=ns/scale;
+    tx = cx-(cx-tx)*k; ty = cy-(cy-ty)*k; scale=ns; applyTransform();
+  }
+  /* smooth zoom around the centre of the visible area — used by the on-screen buttons */
+  function zoomBy(factor, dur=240){
+    const r=viewportRect(); const cx=(r.vx0+r.vx1)/2, cy=(r.vy0+r.vy1)/2;
+    const ns=Math.min(2.2,Math.max(0.22, scale*factor));
+    const k=ns/scale;
+    tweenTo(ns, cx-(cx-tx)*k, cy-(cy-ty)*k, dur);
+  }
+  /* fit/recentre: frame where you are, or the whole map if nothing is active */
+  function fitView(){
+    if(activeId && nodes[activeId]) focusView(nodes[activeId], 520);
+    else { const ids=Object.keys(nodes); if(ids.length) frameNodes(ids, 520); }
+  }
+
+  /* ========================================================= CONTROLS */
+  document.getElementById("strangerBtn").addEventListener("click",takeStranger);
+  document.getElementById("resetBtn").addEventListener("click",reset);
+  document.getElementById("zoomIn").addEventListener("click", ()=>zoomBy(1.25));
+  document.getElementById("zoomOut").addEventListener("click", ()=>zoomBy(0.8));
+  document.getElementById("zoomFit").addEventListener("click", fitView);
+  document.getElementById("saveBtn").addEventListener("click",()=>{ const a=activeId&&nodes[activeId]; if(a) toggleFav(a); });
+  document.getElementById("insClose").addEventListener("click", hideInsight);
+  document.getElementById("insSave").addEventListener("click",()=>{ const a=activeId&&nodes[activeId]; if(a) toggleFav(a); });
+
+  document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+    t.classList.add("on"); currentTab=t.dataset.tab; renderSide();
+  }));
+  const toggle=document.getElementById("side-toggle");
+  toggle.addEventListener("click",()=>{
+    sidebar.classList.toggle("closed");
+    toggle.textContent=sidebar.classList.contains("closed")?"☰":"▸";
+    if(activeId&&nodes[activeId]) centerOn(nodes[activeId].x,nodes[activeId].y,420);
+  });
+  if(window.innerWidth<=720){ sidebar.classList.add("closed"); toggle.textContent="☰"; }
+
+  window.addEventListener("resize",()=>{ layoutSheet(); updateFavButtons(); if(activeId&&nodes[activeId]) centerOn(nodes[activeId].x,nodes[activeId].y,0); });
+
+  /* ========================================================= STARFIELD */
+  (function starfield(){
+    const c=document.getElementById("stars"), x=c.getContext("2d");
+    let w,h,stars,raf;
+    const reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+    function init(){
+      w=c.width=window.innerWidth; h=c.height=window.innerHeight;
+      const n=Math.min(220,Math.floor(w*h/9000));
+      stars=Array.from({length:n},()=>({x:Math.random()*w,y:Math.random()*h,z:Math.random(),tw:Math.random()*Math.PI*2}));
+    }
+    function frame(t){
+      x.clearRect(0,0,w,h);
+      for(const s of stars){
+        const a=0.25+0.55*(0.5+0.5*Math.sin(s.tw + t*0.001));
+        x.globalAlpha=a*(0.4+s.z*0.6);
+        x.fillStyle = s.z>0.85?"#b9c6ff":"#e8eefc";
+        const r=s.z*1.4+0.2;
+        x.beginPath(); x.arc(s.x,s.y,r,0,7); x.fill();
+        s.y += (s.z*0.05+0.01); if(s.y>h){ s.y=0; s.x=Math.random()*w; }
+      }
+      x.globalAlpha=1;
+      raf=requestAnimationFrame(frame);
+    }
+    init(); window.addEventListener("resize",init);
+    if(reduce){ frame(0); cancelAnimationFrame(raf); } else raf=requestAnimationFrame(frame);
+  })();
+
+  /* ========================================================= BOOT */
+  function boot(){
+    const [text,cat]=rnd(SEEDS);
+    const seed=createNode({text,cat,depth:0,x:0,y:0,parent:null,seed:true});
+    setActive(seed); pushTrail(seed);
+    if(window.innerWidth<=720) hideInsight();   // mobile: reveal the graph first, tap to read
+    centerOn(0,0,0);
+    setTimeout(()=>{ expand(seed); focusView(seed); },420);
+    const hint=document.getElementById("hint");
+    setTimeout(()=>hint.classList.add("show"),900);
+    setTimeout(()=>hint.classList.remove("show"),6500);
+  }
+  updateSanity(); renderSide(); applyTransform(); boot();
+})();
+</script>
+</body>
+</html>
